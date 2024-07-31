@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kabeltje - iOS Location Simulator</title>
+    <script src="https://maps.googleapis.com/maps/api/js?key={{ google_maps_api_key }}&libraries=places"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        #map {
+            height: 400px;
+            width: 100%;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 p-8">
+    <div class="max-w-4xl mx-auto bg-white shadow-lg rounded-lg overflow-hidden">
+        <div class="p-6">
+            <h1 class="text-3xl font-bold mb-6">Kabeltje</h1>
+            
+            <button id="startTunnel" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded mb-4">
+                Start Tunnel
+            </button>
+            
+            <h2 class="text-xl font-semibold mb-2">Device Information</h2>
+            <div id="deviceInfo" class="mb-4 p-4 bg-gray-200 rounded"></div>
+            
+            <div id="developerMode" class="mb-4">
+                <p class="mb-2">Developer Mode: <span id="developerModeStatus" class="font-semibold"></span></p>
+                <button id="enableDeveloperMode" class="bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded" style="display: none;">
+                    Enable Developer Mode
+                </button>
+            </div>
+            
+            <h2 class="text-xl font-semibold mb-2">Location</h2>
+            <input id="searchBox" type="text" placeholder="Search for a location" class="w-full p-2 border border-gray-300 rounded mb-4">
+            <div id="map" class="mb-4 rounded overflow-hidden"></div>
+            <div class="flex space-x-4">
+                <button id="setLocation" class="bg-indigo-500 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded">
+                    Set Location on Device
+                </button>
+                <button id="getCurrentLocation" class="bg-purple-500 hover:bg-purple-700 text-white font-bold py-2 px-4 rounded">
+                    Get Current Device Location
+                </button>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        let map, marker;
+        
+        function initMap(lat = 0, lng = 0) {
+            map = new google.maps.Map(document.getElementById('map'), {
+                center: {lat: lat, lng: lng},
+                zoom: 12
+            });
+            
+            marker = new google.maps.Marker({
+                map: map,
+                position: {lat: lat, lng: lng},
+                draggable: true
+            });
+            
+            map.addListener('click', function(e) {
+                marker.setPosition(e.latLng);
+            });
+            
+            const searchBox = new google.maps.places.SearchBox(document.getElementById('searchBox'));
+            searchBox.addListener('places_changed', function() {
+                const places = searchBox.getPlaces();
+                if (places.length === 0) return;
+                
+                const bounds = new google.maps.LatLngBounds();
+                places.forEach(function(place) {
+                    if (!place.geometry) return;
+                    
+                    marker.setPosition(place.geometry.location);
+                    if (place.geometry.viewport) {
+                        bounds.union(place.geometry.viewport);
+                    } else {
+                        bounds.extend(place.geometry.location);
+                    }
+                });
+                map.fitBounds(bounds);
+            });
+        }
+        
+        function getUserLocation() {
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(
+                    (position) => {
+                        const pos = {
+                            lat: position.coords.latitude,
+                            lng: position.coords.longitude,
+                        };
+                        initMap(pos.lat, pos.lng);
+                    },
+                    () => {
+                        console.error('Error: The Geolocation service failed.');
+                        initMap();
+                    }
+                );
+            } else {
+                console.error('Error: Your browser doesn\'t support geolocation.');
+                initMap();
+            }
+        }
+        
+        document.getElementById('startTunnel').addEventListener('click', function() {
+            fetch('/start_tunnel')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.error) {
+                        alert('Error: ' + data.error);
+                    } else {
+                        alert('Tunnel started successfully');
+                    }
+                });
+        });
+        
+        function updateDeviceInfo() {
+            fetch('/device_info')
+                .then(response => response.json())
+                .then(data => {
+                    const deviceInfoDiv = document.getElementById('deviceInfo');
+                    const developerModeStatus = document.getElementById('developerModeStatus');
+                    const enableDeveloperModeButton = document.getElementById('enableDeveloperMode');
+                    
+                    if (data.connected) {
+                        deviceInfoDiv.textContent = `Connected: ${data.name}`;
+                        developerModeStatus.textContent = data.developer_mode ? 'Enabled' : 'Disabled';
+                        developerModeStatus.className = data.developer_mode ? 'text-green-600' : 'text-red-600';
+                        enableDeveloperModeButton.style.display = data.developer_mode ? 'none' : 'block';
+                    } else {
+                        deviceInfoDiv.textContent = 'No device connected';
+                        developerModeStatus.textContent = 'N/A';
+                        developerModeStatus.className = 'text-gray-600';
+                        enableDeveloperModeButton.style.display = 'none';
+                    }
+                });
+        }
+        
+        document.getElementById('enableDeveloperMode').addEventListener('click', function() {
+            fetch('/enable_developer_mode')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.error) {
+                        alert('Error: ' + data.error);
+                    } else {
+                        alert('Developer mode enabled successfully');
+                        updateDeviceInfo();
+                    }
+                });
+        });
+        
+        document.getElementById('setLocation').addEventListener('click', function() {
+            const position = marker.getPosition();
+            fetch('/set_location', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    latitude: position.lat(),
+                    longitude: position.lng()
+                }),
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.error) {
+                    alert('Error: ' + data.error);
+                } else {
+                    alert('Location set successfully');
+                }
+            });
+        });
+        
+        document.getElementById('getCurrentLocation').addEventListener('click', function() {
+            fetch('/get_current_location')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.error) {
+                        alert('Error: ' + data.error);
+                    } else {
+                        const position = new google.maps.LatLng(data.latitude, data.longitude);
+                        marker.setPosition(position);
+                        map.setCenter(position);
+                        map.setZoom(12);
+                    }
+                });
+        });
+        
+        updateDeviceInfo();
+        setInterval(updateDeviceInfo, 5000);
+        
+        getUserLocation();
+    </script>
+</body>
+</html>
