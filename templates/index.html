@@ -18,9 +18,11 @@
         <div class="p-6">
             <h1 class="text-3xl font-bold mb-6">Kabeltje</h1>
             
-            <button id="startTunnel" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded mb-4">
+            <!-- <button id="startTunnel" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded mb-4">
                 Start Tunnel
-            </button>
+            </button> -->
+            <h2 class="text-xl font-semibold mb-2">Start Tunnel</h2>
+            <p class="mb-4">python -m pymobiledevice3 remote tunneld</span></p>
             
             <h2 class="text-xl font-semibold mb-2">Device Information</h2>
             <div id="deviceInfo" class="mb-4 p-4 bg-gray-200 rounded"></div>
@@ -106,6 +108,7 @@
             }
         }
         
+        /*
         document.getElementById('startTunnel').addEventListener('click', function() {
             fetch('/start_tunnel')
                 .then(response => response.json())
@@ -116,7 +119,8 @@
                         alert('Tunnel started successfully');
                     }
                 });
-        });
+        }); 
+        */
         
         function updateDeviceInfo() {
             fetch('/device_info')

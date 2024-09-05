@@ -20,6 +20,7 @@ def start_tunnel():
         return jsonify({"error": "Tunnel feature is only supported on Windows"})
 
     def run_tunnel():
+        python_executable = sys.executable
         subprocess.run(
             [
                 "powershell",
@@ -27,7 +28,7 @@ def start_tunnel():
                 "Start-Process",
                 "powershell",
                 "-ArgumentList",
-                "'-NoExit -Command \"python -m pymobiledevice3 remote tunneld\"'",
+                "'-NoExit -Command \"{python_executable} -m pymobiledevice3 remote tunneld\"'",
                 "-Verb",
                 "runAs",
             ],
